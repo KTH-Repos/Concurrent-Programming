@@ -58,6 +58,72 @@ int sums[MAXWORKERS]; /* partial sums */
 int matrix[MAXSIZE][MAXSIZE]; /* matrix */
 
 void *Worker(void *);
+void *FindMax(void *);
+void *FindMin(void *);
+
+//a
+// void *FindMax(void *arg) {
+//     int max, maxRow, maxCol = 0;
+//     int i, j;
+//     for(i = 0; i < MAXSIZE; i++) {
+//       for(j = 0; j < MAXSIZE; j++) {
+//         if(matrix[i][j] > max) {
+//           max = matrix[i][j];
+//           maxRow = i+1;
+//           maxCol = j+1;
+//         }
+//       }
+//     }
+//     printf("Max number in matrix is %d, located at [%d][%d]\n", max, maxRow, maxCol);
+//   }
+
+//b
+// void *FindMax(void *arg) {
+//     int i, j;
+//     for(i = 0; i < MAXSIZE; i++) {
+//       for(j = 0; j < MAXSIZE; j++) {
+//         if(matrix[i][j] > arg[0]) {
+//           arg[0] = matrix[i][j];
+//           arg[1] = i+1;  //row number
+//           arg[2] = j+1;     //col number
+//         }
+//       }
+//     }
+     
+//   }
+
+  //a
+  // void *FindMin(void *arg) {
+  //   int maxRow, maxCol = 0;
+  //   int min = matrix[0][0];
+  //   int i, j;
+  //   for(i = 0; i < MAXSIZE; i++) {
+  //     for(j = 0; j < MAXSIZE; j++) {
+  //       if(matrix[i][j] < min) {
+  //         min = matrix[i][j];
+  //         maxRow = i+1;
+  //         maxCol = j+1;
+  //       }
+  //     }
+  //   }
+  //   printf("Min number in matrix is %d, located at [%d][%d]\n", min, maxRow, maxCol);
+  // }
+
+//b
+void *FindMin(void *arg) {
+    int arr[] = (int[]) arg;
+    arr[0] = matrix[0][0];
+    int i, j;
+    for(i = 0; i < MAXSIZE; i++) {
+      for(j = 0; j < MAXSIZE; j++) {
+        if(matrix[i][j] < arr[0]) {
+          arr[0] = matrix[i][j];
+          arr[1] = i+1;
+          arr[2] = j+1;
+        }
+      }
+    }
+  }
 
 /* read command line, initialize, and create threads */
 int main(int argc, char *argv[]) {
@@ -65,6 +131,12 @@ int main(int argc, char *argv[]) {
   long l; /* use long in case of a 64-bit system */
   pthread_attr_t attr;
   pthread_t workerid[MAXWORKERS];
+  pthread_t threadForMax;
+  pthread_t threadForMin;
+
+  //arrays that will store the results of findMax and findMin
+  int maxOutPut[3];
+  int minOutPut[3];
 
   /* set global thread attributes */
   pthread_attr_init(&attr);
@@ -80,11 +152,13 @@ int main(int argc, char *argv[]) {
   if (size > MAXSIZE) size = MAXSIZE;
   if (numWorkers > MAXWORKERS) numWorkers = MAXWORKERS;
   stripSize = size/numWorkers;
+  printf("The strip is: %d", stripSize);  
+  printf("\n"); 
 
   /* initialize the matrix */
   for (i = 0; i < size; i++) {
 	  for (j = 0; j < size; j++) {
-          matrix[i][j] = 1;//rand()%99;
+          matrix[i][j] = rand()%99;
 	  }
   }
 
@@ -100,9 +174,12 @@ int main(int argc, char *argv[]) {
 #endif
 
   /* do the parallel work: create the workers */
+  
   start_time = read_timer();
   for (l = 0; l < numWorkers; l++)
     pthread_create(&workerid[l], &attr, Worker, (void *) l);
+  pthread_create(&threadForMax, &attr, FindMax, (void *) maxOutPut);
+  pthread_create(&threadForMin, &attr, FindMin, (void *) minOutPut);
   pthread_exit(NULL);
 }
 
@@ -126,6 +203,7 @@ void *Worker(void *arg) {
     for (j = 0; j < size; j++)
       total += matrix[i][j];
   sums[myid] = total;
+
   Barrier();
   if (myid == 0) {
     total = 0;
@@ -137,4 +215,6 @@ void *Worker(void *arg) {
     printf("The total is %d\n", total);
     printf("The execution time is %g sec\n", end_time - start_time);
   }
+
+  
 }
