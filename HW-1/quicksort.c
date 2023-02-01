@@ -4,15 +4,18 @@
 #include <stdbool.h>
 #include <time.h>
 #include <sys/time.h>
-#define MAXSIZE 100  /* maximum list size */
+#define MAXSIZE 20  /* maximum list size */
+#define MAXWORKERS 10   /* maximum number of workers */
+
 
 
 pthread_mutex_t lock;
+int activeWorkers = 0;
 int list[MAXSIZE];
 struct sublist_data {
     int start;
     int end;
-}
+};
 
 /* timer */
 double read_timer() {
@@ -37,7 +40,7 @@ void swap(int *a, int *b) {
 
 int partition(int start, int end, int pivot) {
     
-    int pivotElem =*list[pivot];
+    int pivotElem =list[pivot];
     swap(&list[pivot], &list[end]);
     int startIndex = start;
 
@@ -52,39 +55,46 @@ int partition(int start, int end, int pivot) {
 
 }
 
-void *quickSort(void *sublist_data) {
+void *quickSort_parallel(void *sublist_data) {
     struct sublist_data *data = (struct sublist_data*) sublist_data;
     int start = data->start;
     int end = data->end;
+    quickSort(start, end);
+} 
 
-    int pivot = start + (end-start)/2;
-    int pivot = partition(start, end, pivot);
+void quickSort(int start, int end) {
 
-    if(start < pivot-1){
-        pthread_t left_thread;
-        struct sublist_data left_subarray;
-        left_subarray.start = start;
-        left_subarray.end = pivot-1;
-        pthread_create(&left_thread, NULL, quickSort, (void *) &left_subarray);
-        pthread_join(left_thread, NULL);
-    }
+   /*  pthread_mutex_lock(&lock);
+    if(activeWorkers <= MAXWORKERS) {
+        activeWorkers++;
+        pthread_mutex_unlock(&lock); */
+        if(start < end) {
+            int pivot = start + (end-start)/2;
+            int pivotPos = partition(start, end, pivot);
 
-    if(pivot+1 < end) {
-        pthread_t right_thread;
-        struct sublist_data right_subarray;
-        right_subarray.start = pivot+1;
-        right_subarray.end = end;
-        pthread_create(&right_thread, NULL, quickSort, (void *) &right_subarray);
-        pthread_join(right_thread, NULL);
-    }
+            pthread_t thread;
+            struct sublist_data sublist;
+            sublist.start = start;
+            sublist.end = pivot;
+            pthread_create(&thread, NULL, quickSort_parallel, (void *) &sublist);
+            printf("(pthread id %ld) has started\n", pthread_self());
+            quickSort(pivotPos+1, end);
 
-    pthread_exit(NULL);
+            pthread_join(thread, NULL);
+        }
+    /* }
+    else {
+        pthread_mutex_unlock(&lock);
+    } */
+    
+
+   
 }
 
 void initList(void) {
     int i;
     for(i = 0; i < MAXSIZE; i++) {
-        list[i] = rand()%100;
+        list[i] = rand()%999;
     }
 }
 
@@ -98,6 +108,18 @@ void printList(void) {
 int main(int argc, char*argv []) {
     initList();
     printList();
+    printf("\n");
+    pthread_t starterthread;
+    struct sublist_data mainList;
+    mainList.start = 0;
+    mainList.end = MAXSIZE-1;
+
+    pthread_t starter;
+    pthread_create(&starter, NULL, quickSort_parallel, (void *) &mainList);
+    pthread_join(starter, NULL);
+    printList();
+
+
 
 }
 
