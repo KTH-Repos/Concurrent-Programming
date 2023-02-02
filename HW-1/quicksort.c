@@ -4,18 +4,19 @@
 #include <stdbool.h>
 #include <time.h>
 #include <sys/time.h>
-#define MAXSIZE 20  /* maximum list size */
+#define MAXSIZE 1000000   /* maximum list size */
 #define MAXWORKERS 10   /* maximum number of workers */
-
-
 
 pthread_mutex_t lock;
 int activeWorkers = 0;
 int list[MAXSIZE];
 struct sublist_data {
+    int *sublist;
     int start;
     int end;
 };
+
+void task_coordinator(int *sublist, int start, int end);
 
 /* timer */
 double read_timer() {
@@ -38,67 +39,79 @@ void swap(int *a, int *b) {
     *b = temp;
 }
 
-int partition(int start, int end, int pivot) {
+int partition(int *sublist, int start, int end, int pivot) {
     
-    int pivotElem =list[pivot];
-    swap(&list[pivot], &list[end]);
+    int pivotElem =sublist[pivot];
+    swap(&sublist[pivot], &sublist[end]);
     int startIndex = start;
 
     for(int i = start; i < end; i++) {
-        if(list[i] <= pivotElem){
-            swap(&list[i], &list[startIndex]);
+        if(sublist[i] < pivotElem){
+            swap(&sublist[i], &sublist[startIndex]);
             startIndex++;
         }
     }
-    swap(&list[startIndex], &list[end]);
+    swap(&sublist[startIndex], &sublist[end]);
     return startIndex;
+}
 
+void quickSort_sequential(int *sublist, int start, int end) {
+    if(start < end) {
+        int pivot = start + (end-start)/2;
+        int pivotPos = partition(sublist, start, end, pivot);
+
+        quickSort_sequential(sublist, start, pivotPos-1);
+        quickSort_sequential(sublist, pivotPos+1, end);
+    }
 }
 
 void *quickSort_parallel(void *sublist_data) {
     struct sublist_data *data = (struct sublist_data*) sublist_data;
-    int start = data->start;
-    int end = data->end;
-    quickSort(start, end);
+    task_coordinator(data->sublist, data->start, data->end);
 } 
 
-void quickSort(int start, int end) {
+void task_coordinator(int *sublist, int start, int end) {
 
-   /*  pthread_mutex_lock(&lock);
-    if(activeWorkers <= MAXWORKERS) {
-        activeWorkers++;
-        pthread_mutex_unlock(&lock); */
-        if(start < end) {
+    if(start < end) {
+        if(end-start>100) {
+
             int pivot = start + (end-start)/2;
-            int pivotPos = partition(start, end, pivot);
+            int pivotPos = partition(sublist, start, end, pivot);
 
-            pthread_t thread;
-            struct sublist_data sublist;
-            sublist.start = start;
-            sublist.end = pivot;
-            pthread_create(&thread, NULL, quickSort_parallel, (void *) &sublist);
-            printf("(pthread id %ld) has started\n", pthread_self());
-            quickSort(pivotPos+1, end);
+            pthread_mutex_lock(&lock);
+            if(activeWorkers < MAXWORKERS) {
+                activeWorkers++;
+                pthread_mutex_unlock(&lock); 
 
-            pthread_join(thread, NULL);
+                pthread_t thread;
+                struct sublist_data sublist_sub = {sublist, start, pivotPos-1};
+                pthread_create(&thread, NULL, quickSort_parallel, (void *) &sublist_sub);
+                
+                printf("(pthread id %ld) has started\n", pthread_self());
+                task_coordinator(sublist, pivotPos+1, end);
+
+                pthread_join(thread, NULL);
+            }
+            else {
+                pthread_mutex_unlock(&lock);
+                quickSort_sequential(sublist, start, end);
+            } 
         }
-    /* }
-    else {
-        pthread_mutex_unlock(&lock);
-    } */
-    
-
-   
-}
-
-void initList(void) {
-    int i;
-    for(i = 0; i < MAXSIZE; i++) {
-        list[i] = rand()%999;
+        else{
+            //printf("sublist is too small to be sorted by new thread\n");
+            quickSort_sequential(sublist, start, end);
+        }
     }
 }
 
-void printList(void) {
+void initList(int *list) {
+    int i;
+    for(i = 0; i < MAXSIZE; i++) {
+        list[i] = rand()%9999;
+    }
+}
+
+void printList(int *list) {
     int i;
     for(i = 0; i < MAXSIZE; i++) {
         printf("%d ", list[i]);
@@ -106,20 +119,22 @@ void printList(void) {
 }
 
 int main(int argc, char*argv []) {
-    initList();
-    printList();
-    printf("\n");
-    pthread_t starterthread;
-    struct sublist_data mainList;
-    mainList.start = 0;
-    mainList.end = MAXSIZE-1;
+    initList(list);
 
-    pthread_t starter;
-    pthread_create(&starter, NULL, quickSort_parallel, (void *) &mainList);
-    pthread_join(starter, NULL);
-    printList();
+    //printList(list);
+
+    double starttime = read_timer();
+
+    task_coordinator(list, 0, MAXSIZE-1);
+
+    double finishtime = read_timer();
+
+    //printf("\n");
+    //printList(list);
 
 
+    printf("Time taken by algo : %g sec", finishtime-starttime);
+
+    return 0;
 
 }
-
