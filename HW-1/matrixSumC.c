@@ -1,14 +1,3 @@
-/* matrix summation using pthreads
-
-   features: uses a barrier; the Worker[0] computes
-             the total sum from partial sums computed by Workers
-             and prints the total sum to the standard output
-
-   usage under Linux:
-     gcc matrixSum.c -lpthread
-     a.out size numWorkers
-
-*/
 #ifndef _REENTRANT 
 #define _REENTRANT 
 #endif 
@@ -30,10 +19,14 @@ double start_time, end_time; /* start and end times */
 int size, stripSize;  /* assume size is multiple of numWorkers */
 int sums[MAXWORKERS]; /* partial sums */
 int matrix[MAXSIZE][MAXSIZE]; /* matrix */
-int min_max[MAXWORKERS][6];
 
+int maxNum, maxNumRow, maxNumCol;
 
+int minNumRow, minNumCol, minNum;
 
+int globalSum;
+
+int bag_of_tasks_counter = 0;
 
 /* a reusable counter barrier */
 void Barrier() {
@@ -63,8 +56,15 @@ double read_timer() {
 
 void *Worker(void *);
 
-//a
-void findMaxInStrip(int first, int last, int l) {
+int getCounter(void) {
+    pthread_mutex_lock(&barrier);
+    int currentRow = bag_of_tasks_counter;
+    bag_of_tasks_counter++;
+    pthread_mutex_unlock(&barrier);
+    return currentRow;
+}
+
+void findMaxForGlobal(int first, int last) {
   int max, maxRow, maxCol = 0;
   int i, j;
   for(i = first; i < last; i++) {
@@ -76,27 +76,19 @@ void findMaxInStrip(int first, int last, int l) {
       }
     }
   }
-  min_max[l][3] = max;
-  min_max[l][4] = maxRow;
-  min_max[l][5] = maxCol;
-}
-
-
-void findGlobalMax(void) {
-  int max, maxRow, maxCol = 0;
-  int i;
-  for(i = 0; i < MAXWORKERS; i++) {
-    if(min_max[i][3] > max) {
-      max = min_max[i][3];
-      maxRow = min_max[i][4];
-      maxCol = min_max[i][5];
-    } 
+  pthread_mutex_lock(&barrier);
+  if(max > maxNum) {
+      maxNum = max;
+      maxNumRow = maxRow;
+      maxNumCol = maxCol;
+      pthread_mutex_unlock(&barrier);
   }
-  printf("Max number in matrix is %d, located at [%d][%d]\n", max, maxRow, maxCol);
+  else{
+    pthread_mutex_unlock(&barrier);
+  }
 }
 
-  //a
-void findMinInStrip(int first, int last, int l) {
+void findMinForGlobal(int first, int last) {
   int minRow, minCol = 0;
   int min = matrix[first][0];
   int i, j;
@@ -109,27 +101,18 @@ void findMinInStrip(int first, int last, int l) {
       }
     }
   }
-  min_max[l][0] = min;
-  min_max[l][1] = minRow;
-  min_max[l][2] = minCol;
-}
-
-void findGlobalMin(void) {
-  int min = min_max[0][0];
-  int minRow = min_max[0][1];
-  int minCol = min_max[0][2];
-  int i;
-  for(i = 0; i < MAXWORKERS; i++) {
-    if(min_max[i][0] < min) {
-      min = min_max[i][0];
-      minRow = min_max[i][1];
-      minCol = min_max[i][2];
-    } 
+  pthread_mutex_lock(&barrier);
+  if(min < minNum) {
+    minNum = min;
+    minNumRow = minRow;
+    minNumCol = minCol;
+    pthread_mutex_unlock(&barrier);
   }
-  printf("Min number in matrix is %d, located at [%d][%d]\n", min, minRow, minCol);
+  else{
+    pthread_mutex_unlock(&barrier);
+  }
 }
 
-/* read command line, initialize, and create threads */
 int main(int argc, char *argv[]) {
   int i, j;
   long l; /* use long in case of a 64-bit system */
@@ -160,6 +143,14 @@ int main(int argc, char *argv[]) {
 	  }
   }
 
+  minNum = matrix[MAXSIZE-1][MAXSIZE-1];
+  minNumCol = MAXSIZE-1;
+  minNumRow = MAXSIZE-1;
+
+  maxNum = 0;
+  maxNumCol = 0;
+  maxNumRow = 0;
+
   /* print the matrix */
   #ifdef DEBUG
   for (i = 0; i < size; i++) {
@@ -171,66 +162,62 @@ int main(int argc, char *argv[]) {
   }
   #endif
 
-
-
   /* do the parallel work: create the workers */
   
   start_time = read_timer();
   for (l = 0; l < numWorkers; l++)
     pthread_create(&workerid[l], &attr, Worker, (void *) l);
+
+  for (l = 0; l < numWorkers; l++)
+     pthread_join(workerid[l], NULL);
+
+  printf("This is printed by main thread\n");
+  printf("Min number in matrix is %d, located at [%d][%d]\n", minNum, minNumRow, minNumCol);
+  printf("Max number in matrix is %d, located at [%d][%d]\n", maxNum, maxNumRow, maxNumCol);
   pthread_exit(NULL);
 }
 
 /* Each worker sums the values in one strip of the matrix.
    After a barrier, worker(0) computes and prints the total */
+
 void *Worker(void *arg) {
-  long myid = (long) arg;
-  int total, i, j, first, last;
+    int currentRow = 0;
+    long myid = (long) arg;
+    int total, i, j, first, last;
 
-#ifdef DEBUG
-  printf("worker %ld (pthread id %ld) has started\n", myid, pthread_self());
-#endif
+    #ifdef DEBUG
+    printf("worker %ld (pthread id %ld) has started\n", myid, pthread_self());
+    #endif
 
-  /* determine first and last rows of my strip */
-  first = myid*stripSize;
-  last = (myid == numWorkers - 1) ? (size - 1) : (first + stripSize - 1);
+    while(currentRow < size) {
 
-  findMinInStrip(first, last, myid);
-  findMaxInStrip(first, last, myid);
+      currentRow = getCounter();
 
-  /* sum values in my strip */
+      if(currentRow >= size)
+        break;
 
-  total = 0;
-  for (i = first; i <= last; i++)
-    for (j = 0; j < size; j++)
-      total += matrix[i][j];
-  sums[myid] = total;
+      first = currentRow;
+      last = currentRow;
 
-  
+      findMinForGlobal(first, last);
+      findMaxForGlobal(first, last);
 
-  Barrier();
-  if (myid == 0) {
-    findGlobalMin();
-    findGlobalMax();
-    total = 0;
-    for (i = 0; i < numWorkers; i++)
-      total += sums[i];
-    /* get end time */
-    end_time = read_timer();
-    /* print results */
-    printf("The total is %d\n", total);
-    printf("The execution time is %g sec\n", end_time - start_time);
+      total = 0;
+      for (i = first; i <= last; i++)
+          for (j = 0; j < size; j++)
+              total += matrix[i][j];
+      sums[myid] = total;
 
-    //Uncomment to print the matrix that contains min and max in every strip of matrix
-
-    /* for (i = 0; i < MAXWORKERS; i++) {
-      printf("[ ");
-      for (j = 0; j < 6; j++) {
-        printf(" %d", min_max[i][j]);
-      }
-      printf(" ]\n");
-    }  */
+      Barrier();
+      if (myid == 0) {
+      total = 0;
+      for (i = 0; i < numWorkers; i++)
+        total += sums[i];
+      /* get end time */
+      end_time = read_timer();
+      /* print results */
+      printf("The total is %d\n", total);
+      printf("The execution time is %g sec\n", end_time - start_time);
+    }
   }
-
-  
 }
