@@ -30,10 +30,12 @@ double start_time, end_time; /* start and end times */
 int size, stripSize;  /* assume size is multiple of numWorkers */
 int sums[MAXWORKERS]; /* partial sums */
 int matrix[MAXSIZE][MAXSIZE]; /* matrix */
+
+//min_max[] holds max, min and pos for every strip in matrix. 
+//First three columns hold minNum, minNumRow, minNumCol.
+//Last three columns hold maxNum, maxNumRow, maxNumCol. 
+
 int min_max[MAXWORKERS][6];
-
-
-
 
 /* a reusable counter barrier */
 void Barrier() {
@@ -63,7 +65,7 @@ double read_timer() {
 
 void *Worker(void *);
 
-//a
+//Find maxNum in a given matrix strip and store in min_max[]
 void findMaxInStrip(int first, int last, int l) {
   int max, maxRow, maxCol = 0;
   int i, j;
@@ -81,7 +83,7 @@ void findMaxInStrip(int first, int last, int l) {
   min_max[l][5] = maxCol;
 }
 
-
+//FInd globalMax and print result to terminal. 
 void findGlobalMax(void) {
   int max, maxRow, maxCol = 0;
   int i;
@@ -95,7 +97,7 @@ void findGlobalMax(void) {
   printf("Max number in matrix is %d, located at [%d][%d]\n", max, maxRow, maxCol);
 }
 
-  //a
+//Find minNum in a given matrix strip and store in min_max[]
 void findMinInStrip(int first, int last, int l) {
   int minRow, minCol = 0;
   int min = matrix[first][0];
@@ -114,6 +116,7 @@ void findMinInStrip(int first, int last, int l) {
   min_max[l][2] = minCol;
 }
 
+//Find globalMin and print to terminal
 void findGlobalMin(void) {
   int min = min_max[0][0];
   int minRow = min_max[0][1];

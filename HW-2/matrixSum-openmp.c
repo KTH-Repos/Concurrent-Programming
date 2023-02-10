@@ -10,25 +10,27 @@
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
-#define MAXSIZE 1000  /* maximum matrix size */
-#define MAXWORKERS 8   /* maximum number of workers */
+#define MAXSIZE 10000  /* maximum matrix size */
+#define MAXWORKERS 16   /* maximum number of workers */
 
 double start_time, end_time;
 
 int numWorkers;
 int size; 
 int matrix[MAXSIZE][MAXSIZE];
-void *Worker(void *);
+
+/* a struct that holds a number with 
+its row and col indexes in matrix */
+struct num_info {
+  int num;
+  int row;
+  int col;
+};
 
 /* read command line, initialize, and create threads */
 int main(int argc, char *argv[]) {
   int i, j, total=0;
-  int minNumRow, minNumCol = 0;
-  int maxNumRow, maxNumCol = 0;
-
-  int minNum = INT_MAX;
-  int maxNum = INT_MIN;
-
+  
   /* read command line args if any */
   size = (argc > 1)? atoi(argv[1]) : MAXSIZE;
   numWorkers = (argc > 2)? atoi(argv[2]) : MAXWORKERS;
@@ -39,44 +41,47 @@ int main(int argc, char *argv[]) {
 
   /* initialize the matrix */
   for (i = 0; i < size; i++) {
-     //printf("[ ");
+    //printf("[ ");
 	  for (j = 0; j < size; j++) {
-      matrix[i][j] = rand()%999;
-      	  //printf(" %d", matrix[i][j]);
+      matrix[i][j] = rand()%100000;
+      //printf(" %d", matrix[i][j]);
 	  }
-	  	  //printf(" ]\n");
+	  //printf(" ]\n");
   }
 
-  //printf("minNum is equal to %d at start\n", minNum);
-  //printf("maxNum is equal to %d at start\n", maxNum);
+/* Used to find the max and min numbers with their indexes in matrix*/
+#pragma omp declare reduction(maximum : struct num_info : omp_out = (omp_in.num> omp_out.num) ? omp_in : omp_out) \
+initializer(omp_priv = {INT_MIN, 0, 0})
 
-  start_time = omp_get_wtime();
-#pragma omp parallel for reduction (+:total) private(j)
-  for (i = 0; i < size; i++)
-    for (j = 0; j < size; j++){
-      total += matrix[i][j];
-      int currentNum = matrix[i][j];
-#pragma omp critical
-      if(currentNum < minNum) {
-        minNum = currentNum;
-        minNumRow = i+1;
-        minNumCol = j+1;
+#pragma omp declare reduction(minimum : struct num_info : omp_out = (omp_in.num< omp_out.num) ? omp_in : omp_out) \
+initializer(omp_priv = {INT_MAX, 0, 0})
+
+    struct num_info maxNum = {INT_MIN, 0, 0};
+    struct num_info minNum = {INT_MAX, 0, 0};
+
+    start_time = omp_get_wtime();
+  #pragma omp parallel for reduction (+:total) reduction (maximum:maxNum) reduction(minimum:minNum) private(j)
+    for (i = 0; i < size; i++)
+      for (j = 0; j < size; j++){
+        total += matrix[i][j];
+        int currentNum = matrix[i][j];
+        if(currentNum < minNum.num) {
+          minNum.num = currentNum;
+          minNum.row = i+1;
+          minNum.col = j+1;
+        }
+        if(currentNum > maxNum.num) {
+          maxNum.num = currentNum;
+          maxNum.row = i+1;
+          maxNum.col = j+1;
+        }
       }
-      if(currentNum > maxNum) {
-        maxNum = currentNum;
-        maxNumRow = i+1;
-        minNumCol = j+1;
-      }
-    }
 
-// implicit barrier
+  // implicit barrier
 
-  end_time = omp_get_wtime();
-
-  printf("the total is %d\n", total);
-  printf("Min number in matrix is %d, located at [%d][%d]\n", minNum, minNumRow, minNumCol);
-  printf("Max number in matrix is %d, located at [%d][%d]\n", maxNum, maxNumRow, maxNumCol);
-  printf("it took %g seconds\n", end_time - start_time);
-
+    printf("the total is %d\n", total);
+    printf("Min number in matrix is %d, located at [%d][%d]\n", minNum.num, minNum.row, minNum.col);
+    printf("Max number in matrix is %d, located at [%d][%d]\n", maxNum.num, maxNum.row, maxNum.col);
+    printf("it took %g seconds\n", end_time - start_time);
 }
 

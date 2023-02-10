@@ -20,6 +20,7 @@ int size, stripSize;  /* assume size is multiple of numWorkers */
 int sums[MAXWORKERS]; /* partial sums */
 int matrix[MAXSIZE][MAXSIZE]; /* matrix */
 
+/* Global variables for max,min and their positions in matrix */    //!!!
 int maxNum, maxNumRow, maxNumCol;
 
 int minNumRow, minNumCol, minNum;

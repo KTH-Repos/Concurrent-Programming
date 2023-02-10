@@ -4,7 +4,7 @@
 #include <stdbool.h>
 #include <time.h>
 #include <sys/time.h>
-#define MAXSIZE 1000000   /* maximum list size */
+#define MAXSIZE 100   /* maximum list size */
 #define MAXWORKERS 10   /* maximum number of workers */
 
 pthread_mutex_t lock;
@@ -91,6 +91,11 @@ void task_coordinator(int *sublist, int start, int end) {
                 task_coordinator(sublist, pivotPos+1, end);
 
                 pthread_join(thread, NULL);
+                pthread_mutex_lock(&lock);
+                activeWorkers--;
+                pthread_mutex_unlock(&lock); 
+
+
             }
             else {
                 pthread_mutex_unlock(&lock);
@@ -121,7 +126,7 @@ void printList(int *list) {
 int main(int argc, char*argv []) {
     initList(list);
 
-    //printList(list);
+    printList(list);
 
     double starttime = read_timer();
 
@@ -129,8 +134,8 @@ int main(int argc, char*argv []) {
 
     double finishtime = read_timer();
 
-    //printf("\n");
-    //printList(list);
+    printf("\n");
+    printList(list);
 
 
     printf("Time taken by algo : %g sec", finishtime-starttime);

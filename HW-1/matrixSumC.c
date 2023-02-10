@@ -7,8 +7,10 @@
 #include <stdbool.h>
 #include <time.h>
 #include <sys/time.h>
-#define MAXSIZE 10000  /* maximum matrix size */
+#include <limits.h>
+#define MAXSIZE 10000 /* maximum matrix size */
 #define MAXWORKERS 10   /* maximum number of workers */
+#define MODULONUM 9999    // defined a constant for number used to generate numbers in matrix     !!!
 
 pthread_mutex_t barrier;  /* mutex lock for the barrier */
 pthread_cond_t go;        /* condition variable for leaving */
@@ -20,11 +22,15 @@ int size, stripSize;  /* assume size is multiple of numWorkers */
 int sums[MAXWORKERS]; /* partial sums */
 int matrix[MAXSIZE][MAXSIZE]; /* matrix */
 
-int maxNum, maxNumRow, maxNumCol;
+/* Global variables for max,min and their positions in matrix */    //!!!
+int maxNumRow, maxNumCol = 0;   
 
-int minNumRow, minNumCol, minNum;
+int minNumRow, minNumCol = 0;
 
-int globalSum;
+int minNum = INT_MAX;
+int maxNum = INT_MIN;
+
+//int globalSum;        //deleted globalSum    !!!
 
 int bag_of_tasks_counter = 0;
 
@@ -56,28 +62,20 @@ double read_timer() {
 
 void *Worker(void *);
 
-int getCounter(void) {
-    pthread_mutex_lock(&barrier);
-    int currentRow = bag_of_tasks_counter;
-    bag_of_tasks_counter++;
-    pthread_mutex_unlock(&barrier);
-    return currentRow;
-}
-
-void findMaxForGlobal(int first, int last) {
+void findMaxForGlobal(int first) {
   int max, maxRow, maxCol = 0;
   int i, j;
-  for(i = first; i < last; i++) {
-    for(j = 0; j < size; j++) {
-      if(matrix[i][j] > max) {
-        max = matrix[i][j];
-        maxRow = i+1;
-        maxCol = j+1;
-      }
+  i = first;
+  for(j = 0; j < size; j++) {
+    if(matrix[i][j] > max) {
+      max = matrix[i][j];
+      maxRow = i+1;
+      maxCol = j+1;
     }
   }
+  
   pthread_mutex_lock(&barrier);
-  if(max > maxNum) {
+  if(max > maxNum && max < MODULONUM) {       //added a checker so that numers that arent supposed to be generated end up being the max   !!!
       maxNum = max;
       maxNumRow = maxRow;
       maxNumCol = maxCol;
@@ -88,19 +86,19 @@ void findMaxForGlobal(int first, int last) {
   }
 }
 
-void findMinForGlobal(int first, int last) {
+void findMinForGlobal(int first) {
   int minRow, minCol = 0;
-  int min = matrix[first][0];
+  int min = 100;
   int i, j;
-  for(i = first; i < last; i++) {
-    for(j = 0; j < size; j++) {
-      if(matrix[i][j] < min) {
-        min = matrix[i][j];
-        minRow = i+1;
-        minCol = j+1;
-      }
+  i = first;
+  for(j = 0; j < size; j++) {
+    if(matrix[i][j] < min) {
+      min = matrix[i][j];
+      minRow = i+1;
+      minCol = j+1;
     }
   }
+  
   pthread_mutex_lock(&barrier);
   if(min < minNum) {
     minNum = min;
@@ -139,21 +137,13 @@ int main(int argc, char *argv[]) {
   /* initialize the matrix */
   for (i = 0; i < size; i++) {
 	  for (j = 0; j < size; j++) {
-          matrix[i][j] = rand()%999;
+          matrix[i][j] = rand()%MODULONUM;
 	  }
   }
 
-  minNum = matrix[MAXSIZE-1][MAXSIZE-1];
-  minNumCol = MAXSIZE-1;
-  minNumRow = MAXSIZE-1;
-
-  maxNum = 0;
-  maxNumCol = 0;
-  maxNumRow = 0;
-
   /* print the matrix */
   #ifdef DEBUG
-  for (i = 0; i < size; i++) {
+  for (i = size-2; i < size; i++) {
 	  printf("[ ");
 	  for (j = 0; j < size; j++) {
 	    printf(" %d", matrix[i][j]);
@@ -181,7 +171,7 @@ int main(int argc, char *argv[]) {
    After a barrier, worker(0) computes and prints the total */
 
 void *Worker(void *arg) {
-    int currentRow = 0;
+    int currentRow;
     long myid = (long) arg;
     int total, i, j, first, last;
 
@@ -191,25 +181,26 @@ void *Worker(void *arg) {
 
     while(currentRow < size) {
 
-      currentRow = getCounter();
+      pthread_mutex_lock(&barrier);
+      currentRow = bag_of_tasks_counter;
+      bag_of_tasks_counter++;
+      pthread_mutex_unlock(&barrier);
 
       if(currentRow >= size)
         break;
 
-      first = currentRow;
-      last = currentRow;
-
-      findMinForGlobal(first, last);
-      findMaxForGlobal(first, last);
-
       total = 0;
-      for (i = first; i <= last; i++)
-          for (j = 0; j < size; j++)
-              total += matrix[i][j];
-      sums[myid] = total;
+      for (j = 0; j < size; j++)
+          total += matrix[currentRow][j];
+      sums[myid] += total;          //every row is summed up and added to partial array for sums  !!!
 
-      Barrier();
-      if (myid == 0) {
+      findMinForGlobal(currentRow);
+      findMaxForGlobal(currentRow);
+
+    }
+    //Removed this part from the while loop     !!!
+    Barrier();
+    if (myid == 0) {
       total = 0;
       for (i = 0; i < numWorkers; i++)
         total += sums[i];
@@ -218,6 +209,5 @@ void *Worker(void *arg) {
       /* print results */
       printf("The total is %d\n", total);
       printf("The execution time is %g sec\n", end_time - start_time);
-    }
   }
 }
