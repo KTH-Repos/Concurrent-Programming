@@ -1,5 +1,6 @@
 /*The number of threads and size of array to be sorted is hard-coded in the program and 
 cannot be modified with input from terminal before execution  */
+
 #include <omp.h>
 #include <stdio.h>
 #include <stdlib.h>
