@@ -11,7 +11,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #define MAXSIZE 10000  /* maximum matrix size */
-#define MAXWORKERS 16   /* maximum number of workers */
+#define MAXWORKERS 8   /* maximum number of workers */
 
 double start_time, end_time;
 
@@ -78,6 +78,7 @@ initializer(omp_priv = {INT_MAX, 0, 0})
       }
 
   // implicit barrier
+    end_time = omp_get_wtime();
 
     printf("the total is %d\n", total);
     printf("Min number in matrix is %d, located at [%d][%d]\n", minNum.num, minNum.row, minNum.col);

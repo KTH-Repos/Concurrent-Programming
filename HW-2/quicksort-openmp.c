@@ -4,8 +4,8 @@ cannot be modified with input from terminal before execution  */
 #include <omp.h>
 #include <stdio.h>
 #include <stdlib.h>
-#define MAXSIZE 20  /* maximum matrix size */
-#define MAXWORKERS 16   /* maximum number of workers */
+#define MAXSIZE 100000  /* maximum matrix size */
+#define MAXWORKERS 2   /* maximum number of workers */
 
 double start_time, end_time;
 
@@ -86,7 +86,7 @@ int main(int argc, char*argv[]) {
 
         end_time = omp_get_wtime();
 
-        printList(list);
+        //printList(list);
 
         //printf("\n\n");
 
