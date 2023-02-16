@@ -4,10 +4,10 @@
 #include <unistd.h>
 #include <pthread.h>
 #include <semaphore.h>
-#define CONSUMERS 8
+#define CONSUMERS 3
 #define WORMS 5
 
-//n baby birds, one parent bird, W worms
+//n baby birds(CONSUMERS), one parent bird(PRODUCER), W worms
 
 pthread_t babybirds[CONSUMERS];
 pthread_t parent;
@@ -35,10 +35,11 @@ void *consuming(void *arg) {
             printf("babybird %ld ate one worm and there are %d worms left\n\n", myID, availableWorms);
             sem_post(&mutexC);      //unlock critical section
             sem_post(&full);
+            //printf("babybird %ld is going to sleep now\n\n", myID);
             sleep(2);
         }
         else {
-            printf("babybird %ld found empty dish, waiting for parent\n\n", myID);
+            printf("babybird %ld found empty dish, waiting for parent ...\n\n", myID);
             sem_post(&mutexC);
             sem_post(&empty);
         }
@@ -48,10 +49,10 @@ void *consuming(void *arg) {
 int main(int argc, char*argv[]) {
 
     int numbabybirds = CONSUMERS;
-    int availableWorms = WORMS;
+    availableWorms = WORMS;
     sem_init(&empty, true, 0);
     sem_init(&full, true, 1);
-    sem_init(&mutexC, true, 1);    //used as mutex
+    sem_init(&mutexC, false, 1);    //used as mutex lock
 
     pthread_attr_t attr;
     pthread_attr_init(&attr);
@@ -60,6 +61,9 @@ int main(int argc, char*argv[]) {
     for (l = 0; l < numbabybirds; l++)
         pthread_create(&babybirds[l], &attr, consuming, (void *)l);
 
+    pthread_join(parent, NULL);
+    for(l = 0; l < numbabybirds; l++)
+        pthread_join(babybirds[l], NULL);
     
 
 }
