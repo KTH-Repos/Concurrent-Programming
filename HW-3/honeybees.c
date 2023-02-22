@@ -11,7 +11,7 @@
 
 pthread_t bees[PRODUCERS];      //N honeybees
 pthread_t bear;
-int honeypot_portions;          //symbolized honeypot, accessed by honeybees and bear
+int honeypot_portions;          //symbolizes honeypot, accessed by honeybees and bear
 
 sem_t full, empty;              //semaphores for mutex lock and conditional synchronization 
 
