@@ -9,7 +9,8 @@ public class SpaceVehicle extends Thread {
     boolean takesNitrogen;
     boolean takesQuantumFluid;
 
-    public SpaceVehicle(int nitorgenFuelTankCapacity, int quantumFluidTankCapacity, SpaceStation station) {
+    public SpaceVehicle(String name, int nitorgenFuelTankCapacity, int quantumFluidTankCapacity, SpaceStation station) {
+        super(name);
         this.station = station;
         this.nitorgenFuelTankCapacity = nitorgenFuelTankCapacity;
         this.quantumFluidTankCapacity = quantumFluidTankCapacity;
@@ -25,16 +26,10 @@ public class SpaceVehicle extends Thread {
     @Override
     public void run() {
         while (true) {
-            if (takesNitrogen && takesQuantumFluid) {
-                nitrogenFuelTank = station.getNitrogenFuel(nitorgenFuelTankCapacity);
-                quantumFluidTank = station.getQuantumFluid(quantumFluidTankCapacity);
-            } else if (takesNitrogen) {
-                nitrogenFuelTank = station.getNitrogenFuel(nitorgenFuelTankCapacity);
-            } else {
-                quantumFluidTank = station.getQuantumFluid(quantumFluidTankCapacity);
-            }
-
+            station.getFuel(this);
             try {
+                System.out.println("Vehicle " + this.getName() + " will now travel away ...");
+                System.out.println("  ");
                 sleep(5000);
                 nitrogenFuelTank = 0;
                 quantumFluidTank = 0;
