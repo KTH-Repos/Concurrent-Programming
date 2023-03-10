@@ -40,7 +40,7 @@ public class WormDish {
                         "babybird " + bird.getName() + " ate one worm and there are " + availableWorms + " left");
                 notify();
                 try {
-                    bird.sleep(2000);
+                    Thread.sleep(2000);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
@@ -50,7 +50,7 @@ public class WormDish {
 
     public static void main(String[] args) {
         WormDish dish = new WormDish();
-        final int CONSUMERS = 6;
+        final int CONSUMERS = 8;
         ArrayList<BabyBird> birds = new ArrayList<>();
         ParentBird parent = new ParentBird(dish);
         for (int i = 0; i < CONSUMERS; i++) {
