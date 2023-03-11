@@ -41,16 +41,16 @@ double max_diff(double **grid, double **new, int n) {
 
 void jacobiMethod(double **grid, double**new, int n) {
     int i, j, totIterations;
-    int size = n-2;
+    int size = n-1;
     for(totIterations = 0; totIterations < numIters; totIterations++) {
         //calculate the interior points
-        for(i = 0; i < size; i++) {
-            for(j = 0; j < size; j++) {
+        for(i = 1; i < size; i++) {
+            for(j = 1; j < size; j++) {
                 new[i][j] = (grid[i-1][j] + grid[i+1][j] + grid[i][j-1] + grid[i][j+1]) * 0.25;
             }
         }
-        for(i = 0; i < size; i++) {
-            for(j = 0; j < size; j++) {
+        for(i = 1; i < size; i++) {
+            for(j = 1; j < size; j++) {
                 grid[i][j] = (new[i-1][j] + new[i+1][j] + new[i][j-1] + new[i][j+1]) * 0.25;
             }
         }
@@ -81,7 +81,7 @@ int main(int argc, char *argv[]) {
 
     gridSize = (argc > 1)? atoi(argv[1]) : MAXGRIDSIZE;
     numIters = (argc > 2)? atoi(argv[2]) : MAXITERS;
-    numWorkers = (argc > 2)? atoi(argv[3]) : MAXWORKERS;
+    numWorkers = (argc > 3)? atoi(argv[3]) : MAXWORKERS;
 
     if(gridSize > MAXGRIDSIZE) gridSize = MAXGRIDSIZE;
     if(numIters > MAXITERS) numIters = MAXITERS;
