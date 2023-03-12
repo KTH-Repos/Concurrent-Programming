@@ -13,6 +13,7 @@
 int gridSize, numIters, numWorkers;
 double start_time, end_time;
 
+
 double max_diff(double **grid, double **new, int n) {
     double maxdiff = 0.0;
     int strip_size = ceil((double) n/numWorkers);        //calculate the strip size for every worker
@@ -44,6 +45,7 @@ void jacobiMethod(double **grid, double**new, int n) {
         //calculate the interior points in parallel
         #pragma omp parallel for schedule(static, strip_size) private(j)
             for(i = 1; i < size; i++) {
+                //printf("row %d processed by thread %d\n", i, omp_get_thread_num());
                 for(j = 1; j < size; j++) {
                     new[i][j] = (grid[i-1][j] + grid[i+1][j] + grid[i][j-1] + grid[i][j+1]) * 0.25;
                 }
@@ -78,14 +80,16 @@ void printGrid(double **grid, int gridSize) {
 
 int main(int argc, char *argv[]) {
     
-    //int gridSize, numIters, numWorkers
+    //int gridSize, numIters, numWorkers;
+
+
     gridSize = (argc > 1)? atoi(argv[1]) : MAXGRIDSIZE;
     numIters = (argc > 2)? atoi(argv[2]) : MAXITERS;
     numWorkers = (argc > 3)? atoi(argv[3]) : MAXWORKERS;
 
-    if(gridSize > MAXGRIDSIZE) gridSize = MAXGRIDSIZE;
-    if(numIters > MAXITERS) numIters = MAXITERS;
-    if(numWorkers > MAXWORKERS) numWorkers = MAXWORKERS;
+    //if(gridSize > MAXGRIDSIZE) gridSize = MAXGRIDSIZE;
+    //if(numIters > MAXITERS) numIters = MAXITERS;
+    //if(numWorkers > MAXWORKERS) numWorkers = MAXWORKERS;
 
     omp_set_num_threads(numWorkers);
 

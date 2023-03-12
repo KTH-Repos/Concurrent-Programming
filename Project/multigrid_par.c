@@ -48,12 +48,12 @@ double max_diff(double **grid, double **new, int n) {
     return maxdiff;
 }
 
-void jacobiMethod(double **grid, double**new, int n) {
+void jacobiMethod(double **grid, double**new, int n, int iterations) {
     int i, j, totIterations;
     int size = n-1;
     int strip_size = ceil((double) size/numWorkers);        //calculate the strip size for every worker
 
-    for(totIterations = 0; totIterations < numIters; totIterations++) {
+    for(totIterations = 0; totIterations < iterations; totIterations++) {
         //calculate the interior points in parallel
         #pragma omp parallel for schedule(static, strip_size) private(j)
             for(i = 1; i < size; i++) {
@@ -77,7 +77,6 @@ void restriction(double** coarse, double** fine, int n) {
     int sizeCoarse = n-1;
     int strip_size = ceil((double) sizeCoarse/numWorkers);        //calculate the strip size for every worker
 
-
     #pragma omp parallel for schedule(static, strip_size) private(j,k,l)
         for(i = 1; i < sizeCoarse; i++) {
             k = i*2;
@@ -91,12 +90,14 @@ void restriction(double** coarse, double** fine, int n) {
 
 void interpolate(double** coarse, double** fine, int size){        
     int i, j, k, l;
-    int sizeC = size-1;
+    int sizeCoarse = size-1;
+    int strip_size = ceil((double) sizeCoarse/numWorkers);        //calculate the strip size for every worker
+
     /* iterate over the fine matrix, mapping has a 2:1 relation between the coarse matrix to the fine matrix in regards to i,j : k,l */
     #pragma omp parallel for schedule(static, strip_size) private(j,k,l)
-        for(i = 1; i < sizeC; i++){
+        for(i = 1; i < sizeCoarse; i++){
             k = i * 2;
-            for(j = 1; j < sizeC; j++){
+            for(j = 1; j < sizeCoarse; j++){
                 l = j * 2;
                 /* interpolate value of the fine grid point by using the value at the coarse grid point and its neighbours on the fine grid */
                 fine[k][l] = coarse[i][j];

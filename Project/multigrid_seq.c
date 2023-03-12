@@ -4,6 +4,7 @@
 #include <time.h>
 #include <sys/time.h>
 #include <math.h>
+#include <omp.h>
 
 #define MAXGRIDSIZE 500
 #define MAXITERS 1000
@@ -97,10 +98,6 @@ void interpolate(double** coarse, double** fine, int size){
 void initGrids(double **grid, double **new, int gridSize) {
     int i, j;
 
-    //gridSize+=2;   //include the boundary points before creating grids
-
-    // grid = malloc(gridSize*sizeof(double*));
-    // new = malloc(gridSize*sizeof(double*));
     for(i = 0; i < gridSize; i++) {
         grid[i] = malloc(gridSize*sizeof(double));
         new[i] = malloc(gridSize*sizeof(double));
@@ -180,7 +177,7 @@ int main(int argc, char *argv[]) {
     initGrids(grid4, new4, gridSize4); 
     
     //size1 -> size2 -> size3 -> size4
-    ////////Multi-grid method////////////
+    //Multi-grid method
     start_time = read_timer();
     jacobiMethod(grid1, new1, gridSize1, 4);
     restriction(grid2, grid1, gridSize2);
@@ -191,8 +188,7 @@ int main(int argc, char *argv[]) {
     jacobiMethod(grid3, new3, gridSize3, 4);
     restriction(grid4, grid3, gridSize4);
 
-    /////////Coarset grid reached//////////
-
+    //Coarset grid reached
     jacobiMethod(grid4, new4, gridSize4, numIters);
     interpolate(grid4, grid3, gridSize4);
 

@@ -4,6 +4,7 @@
 #include <time.h>
 #include <sys/time.h>
 #include <math.h>
+#include <omp.h>
 
 #define MAXGRIDSIZE 200
 #define MAXITERS 10
@@ -83,9 +84,9 @@ int main(int argc, char *argv[]) {
     numIters = (argc > 2)? atoi(argv[2]) : MAXITERS;
     numWorkers = (argc > 3)? atoi(argv[3]) : MAXWORKERS;
 
-    if(gridSize > MAXGRIDSIZE) gridSize = MAXGRIDSIZE;
-    if(numIters > MAXITERS) numIters = MAXITERS;
-    if(numWorkers > MAXWORKERS) numWorkers = MAXWORKERS;
+    //if(gridSize > MAXGRIDSIZE) gridSize = MAXGRIDSIZE;
+    //if(numIters > MAXITERS) numIters = MAXITERS;
+    //if(numWorkers > MAXWORKERS) numWorkers = MAXWORKERS;
 
     gridSize = gridSize + 2;    //include the boundary points before creating grids
     int i, j;
@@ -117,7 +118,7 @@ int main(int argc, char *argv[]) {
     end_time = read_timer();
 
     printf("Command-line arguments : gridSize: %s numIters: %s numWorkers: %s\n", argv[1], argv[2], argv[3]);
-    printf("Execution-time: %g\n", end_time-start_time);
+    printf("Execution-time: %g sec\n", end_time-start_time);
     printf("Maxerror : %g\n", maxDifference);
     printGrid(grid, gridSize);
 
