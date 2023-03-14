@@ -4,11 +4,14 @@
 #include <time.h>
 #include <sys/time.h>
 #include <math.h>
-#include <omp.h>
 
+//some filler values - ignore them
 #define MAXGRIDSIZE 500
 #define MAXITERS 1000
 #define MAXWORKERS 4
+
+// compile with gcc -O multigrid_seq.c
+// run with ./a.out gridSize numIters numWorkers
 
 int gridSize, numIters, numWorkers;
 double start_time, end_time;
@@ -141,11 +144,6 @@ int main(int argc, char *argv[]) {
     gridSize = (argc > 1)? atoi(argv[1]) : MAXGRIDSIZE;
     numIters = (argc > 2)? atoi(argv[2]) : MAXITERS;
     numWorkers = (argc > 3)? atoi(argv[3]) : MAXWORKERS;
-
-    if(gridSize > MAXGRIDSIZE) gridSize = MAXGRIDSIZE;
-    if(numIters > MAXITERS) numIters = MAXITERS;
-    if(numWorkers > MAXWORKERS) numWorkers = MAXWORKERS;
-
 
     int gridSize4 = gridSize;                             //size of coarsest grid, which is the smallest
     int gridSize3 = (gridSize4*2 + 1);

@@ -6,9 +6,13 @@
 #include <math.h>
 #include <omp.h>
 
+//some filler values - ignore them
 #define MAXGRIDSIZE 200
 #define MAXITERS 300
 #define MAXWORKERS 4
+
+// compile with gcc -O -fopenmp jacobi_par.c
+// run with ./a.out gridSize numIters numWorkers
 
 int gridSize, numIters, numWorkers;
 double start_time, end_time;
@@ -39,24 +43,27 @@ double max_diff(double **grid, double **new, int n) {
 void jacobiMethod(double **grid, double**new, int n) {
     int i, j, totIterations;
     int size = n-1;
-    int strip_size = ceil((double) size/numWorkers);        //calculate the strip size for every worker
+    int strip_size = floor((double) size/numWorkers);        //calculate the strip size for every worker
 
     for(totIterations = 0; totIterations < numIters; totIterations++) {
         //calculate the interior points in parallel
-        #pragma omp parallel for schedule(static, strip_size) private(j)
-            for(i = 1; i < size; i++) {
-                //printf("row %d processed by thread %d\n", i, omp_get_thread_num());
-                for(j = 1; j < size; j++) {
-                    new[i][j] = (grid[i-1][j] + grid[i+1][j] + grid[i][j-1] + grid[i][j+1]) * 0.25;
+        #pragma omp parallel
+        {
+            #pragma omp for schedule(static, strip_size) private(j)
+                for(i = 1; i < size; i++) {
+                    //printf("row %d processed by thread %d\n", i, omp_get_thread_num());
+                    for(j = 1; j < size; j++) {
+                        new[i][j] = (grid[i-1][j] + grid[i+1][j] + grid[i][j-1] + grid[i][j+1]) * 0.25;
+                    }
                 }
-            }
             #pragma omp barrier
-
-            for(i = 1; i < size; i++) {
-                for(j = 1; j < size; j++) {
-                    grid[i][j] = (new[i-1][j] + new[i+1][j] + new[i][j-1] + new[i][j+1]) * 0.25;
+            #pragma omp for schedule(static, strip_size) private(j)
+                for(i = 1; i < size; i++) {
+                    for(j = 1; j < size; j++) {
+                        grid[i][j] = (new[i-1][j] + new[i+1][j] + new[i][j-1] + new[i][j+1]) * 0.25;
+                    }
                 }
-            }
+        }
         //implicit barrier
     }
 }
@@ -80,16 +87,9 @@ void printGrid(double **grid, int gridSize) {
 
 int main(int argc, char *argv[]) {
     
-    //int gridSize, numIters, numWorkers;
-
-
     gridSize = (argc > 1)? atoi(argv[1]) : MAXGRIDSIZE;
     numIters = (argc > 2)? atoi(argv[2]) : MAXITERS;
     numWorkers = (argc > 3)? atoi(argv[3]) : MAXWORKERS;
-
-    //if(gridSize > MAXGRIDSIZE) gridSize = MAXGRIDSIZE;
-    //if(numIters > MAXITERS) numIters = MAXITERS;
-    //if(numWorkers > MAXWORKERS) numWorkers = MAXWORKERS;
 
     omp_set_num_threads(numWorkers);
 

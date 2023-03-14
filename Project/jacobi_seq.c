@@ -4,11 +4,14 @@
 #include <time.h>
 #include <sys/time.h>
 #include <math.h>
-#include <omp.h>
 
+//some filler values - ignore them
 #define MAXGRIDSIZE 200
 #define MAXITERS 10
 #define MAXWORKERS 4
+
+// compile with gcc -O jacobi_seq.c
+// run with ./a.out gridSize numIters numWorkers
 
 int gridSize, numIters, numWorkers;
 double start_time, end_time;
@@ -77,16 +80,9 @@ void printGrid(double **grid, int gridSize) {
 
 int main(int argc, char *argv[]) {
     
-    //int gridSize, numIters, numWorkers;
-
-
     gridSize = (argc > 1)? atoi(argv[1]) : MAXGRIDSIZE;
     numIters = (argc > 2)? atoi(argv[2]) : MAXITERS;
     numWorkers = (argc > 3)? atoi(argv[3]) : MAXWORKERS;
-
-    //if(gridSize > MAXGRIDSIZE) gridSize = MAXGRIDSIZE;
-    //if(numIters > MAXITERS) numIters = MAXITERS;
-    //if(numWorkers > MAXWORKERS) numWorkers = MAXWORKERS;
 
     gridSize = gridSize + 2;    //include the boundary points before creating grids
     int i, j;
