@@ -212,7 +212,7 @@ int main(int argc, char *argv[]) {
     end_time = omp_get_wtime();
 
     printf("Command-line arguments : gridSize: %s numIters: %s numWorkers: %s\n", argv[1], argv[2], argv[3]);
-    printf("Execution-time: %g\n", end_time-start_time);
+    printf("Execution-time: %g sec\n", end_time-start_time);
     printf("Maxerror : %g\n", maxDifference);
     printGrid(grid1, gridSize1);
 
